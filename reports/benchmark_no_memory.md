@@ -18,7 +18,7 @@
 | E03 | long_term | FAIL | 0.0 | 0 | 100.0% | missing=benchmark report, 16:00 |
 | E04 | episodic | FAIL | 0.0 | 0 | 100.0% | missing=ClientSession, concurrency=20, ASYNC-FIX-20 |
 | E05 | episodic | FAIL | 0.0 | 0 | 100.0% | missing=connection churn, timeout threshold |
-| E07 | mixed | FAIL | 0.1 | 0 | 100.0% | missing=Python, Idempotency-Key |
+| E07 | mixed | FAIL | 0.0 | 0 | 100.0% | missing=Python, Idempotency-Key |
 | E11 | semantic | FAIL | 0.0 | 0 | 100.0% | missing=connection pooling, CONN-POOL-FIRST |
 | E08 | long_term | FAIL | 0.0 | 0 | 100.0% | missing=BLUEBIRD-42, TypeScript, NestJS |
 
