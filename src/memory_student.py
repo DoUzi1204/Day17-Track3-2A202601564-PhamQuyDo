@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from .config import settings
@@ -16,7 +17,6 @@ class StudentMemory:
         self.budget = ContextBudgetManager(settings.context_tokens)
 
     def retrieve_long_term(self, user_id: str, thread_id: str, query: str) -> str:
-        # LAB TODO 1/4
         # 1) Prime the thread slice for context relevance
         prime_eval_thread(self.client, user_id, thread_id, query)
         
@@ -36,10 +36,10 @@ class StudentMemory:
         except Exception:
             fact_text = ""
 
-        return join_nonempty([context_block, fact_text], sep="\n\n")
+        # Put fact_text first so specific query facts are never trimmed by the token budget
+        return join_nonempty([fact_text, context_block], sep="\n\n")
 
     def retrieve_episodic(self, user_id: str, query: str) -> str:
-        # LAB TODO 2/4
         # Search episodic trajectory/experience on the user graph
         results = self.client.graph.search(
             user_id=user_id,
@@ -50,7 +50,6 @@ class StudentMemory:
         return render_graph_search(results, episode_char_cap=180)
 
     def retrieve_semantic(self, graph_id: str, query: str) -> str:
-        # LAB TODO 3/4
         # Search domain knowledge on standalone graph with scope="episodes" (fallback to "nodes")
         q = cap_query(query)
         try:
@@ -60,6 +59,7 @@ class StudentMemory:
                 scope="episodes",
                 limit=8,
             )
+            text = render_graph_search(results)
         except Exception:
             results = self.client.graph.search(
                 graph_id=graph_id,
@@ -67,9 +67,27 @@ class StudentMemory:
                 scope="nodes",
                 limit=8,
             )
-        return render_graph_search(results)
+            text = render_graph_search(results)
+
+        # Normalize JSON episodes to their concise summaries to avoid duplicate token consumption
+        cleaned_chunks: list[str] = []
+        seen: set[str] = set()
+        for chunk in text.split("EPISODE: "):
+            cleaned = chunk.replace("metadata=", "").strip()
+            if not cleaned:
+                continue
+            if cleaned.startswith("{") and cleaned.endswith("}"):
+                try:
+                    data = json.loads(cleaned)
+                    cleaned = data.get("summary") or cleaned
+                except Exception:
+                    pass
+            if cleaned not in seen:
+                seen.add(cleaned)
+                cleaned_chunks.append(f"EPISODE: {cleaned}")
+
+        return "\n".join(cleaned_chunks) if cleaned_chunks else text
 
     def assemble_context(self, layers: dict[str, str]) -> tuple[str, dict[str, dict[str, int]]]:
-        # LAB TODO 4/4
         # Enforce 10/4/3/3 token budget and STM -> Long-term -> Episodic -> Semantic priority
         return self.budget.assemble(layers)
